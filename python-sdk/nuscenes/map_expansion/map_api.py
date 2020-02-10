@@ -78,7 +78,9 @@ class NuScenesMap:
 
         # These are the non-geometric layers which have line strings as the geometric descriptors.
         self.non_geometric_line_layers = ['road_divider', 'lane_divider', 'traffic_light']
-        self.non_geometric_layers = self.non_geometric_polygon_layers + self.non_geometric_line_layers
+        # self.non_geometric_layers = self.non_geometric_polygon_layers + self.non_geometric_line_layers
+        self.non_geometric_layers = ['drivable_area', 'road_segment', 'road_block', 'lane', 'ped_crossing',
+                                    'walkway', 'stop_line', 'carpark_area', 'road_divider', 'lane_divider']
         self.layer_names = self.geometric_layers + self.non_geometric_polygon_layers + self.non_geometric_line_layers
 
         with open(self.json_fname, 'r') as fh:
@@ -996,7 +998,7 @@ class NuScenesMapExplorer:
 
         # Compute number of close ego poses.
         if verbose:
-            print('Creating plot...')
+            print('Creating pllllllllllllllllllllllot...')
         map_poses = np.vstack(map_poses)[:, :2]
 
         # Render the map patch with the current ego poses.
@@ -1015,8 +1017,11 @@ class NuScenesMapExplorer:
 
         # Plot in the same axis as the map.
         # Make sure these are plotted "on top".
+        if verbose:
+            print("right before plotting.....")
         if render_egoposes:
-            ax.scatter(map_poses[:, 0], map_poses[:, 1], s=20, c='k', alpha=1.0, zorder=2)
+            print("Im inside")
+            ax.scatter(map_poses[:, 0], map_poses[:, 1], s=20, c='g', alpha=1.0, zorder=2)
         plt.axis('off')
 
         if out_path is not None:

@@ -6,8 +6,8 @@
 *.pyc
 *.png
 *.jpg
+*.pkl
 *ipynb_*
-*ipynb
 *._*
 *.so
 *.o

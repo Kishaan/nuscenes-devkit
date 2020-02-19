@@ -30,13 +30,13 @@ map_files = {'singapore-onenorth': so_map,
 with open('details/scene_info.pkl', 'rb') as handle:
     scene_info = pickle.load(handle)
 
-for n_scene in range(6,7):
+for n_scene in range(849,850):
     map_poses = map_files[scene_info[str(n_scene)]["map_name"]].render_egoposes_on_fancy_map(nusc, \
                     scene_tokens=[nusc.scene[n_scene]['token']], verbose=True,
                     render_egoposes=False, render_egoposes_range=False,
                     render_legend=False)
 
-    plt.scatter(map_poses[:, 0], map_poses[:, 1], s=20, c='g', alpha=1.0, zorder=2)
+    plt.scatter(map_poses[:, 0], map_poses[:, 1], s=20, c='k', alpha=1.0, zorder=2)
     plt.scatter(scene_info[str(n_scene)]["trajectories_x"],
                 scene_info[str(n_scene)]["trajectories_y"], s=20, c='r', alpha=1.0, zorder=2)
 

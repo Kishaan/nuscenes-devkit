@@ -451,7 +451,7 @@ class NuScenesMapExplorer:
         # Mutable default argument.
         if color_map is None:
             color_map = dict(drivable_area='#a6cee3',
-                             road_segment='#1f78b4',
+                             road_segment='#33a02c',
                              road_block='#b2df8a',
                              lane='#33a02c',
                              ped_crossing='#fb9a99',

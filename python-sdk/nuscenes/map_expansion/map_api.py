@@ -81,6 +81,8 @@ class NuScenesMap:
         # self.non_geometric_layers = self.non_geometric_polygon_layers + self.non_geometric_line_layers
         self.non_geometric_layers = ['drivable_area', 'road_segment', 'road_block', 'lane', 'ped_crossing',
                                     'walkway', 'stop_line', 'carpark_area', 'road_divider', 'lane_divider']
+        self.reduced_geometric_layers = ['road_segment', 'road_block', 'lane', 'ped_crossing',
+                                    'walkway', 'road_divider', 'lane_divider']
         self.layer_names = self.geometric_layers + self.non_geometric_polygon_layers + self.non_geometric_line_layers
 
         with open(self.json_fname, 'r') as fh:
@@ -91,7 +93,19 @@ class NuScenesMap:
         self._make_token2ind()
         self._make_shortcuts()
 
-        self.explorer = NuScenesMapExplorer(self)
+        new_color_map = dict(drivable_area='#a6cee3',
+                             road_segment='#33a02c',
+                             road_block='#33a02c',
+                             lane='#33a02c',
+                             ped_crossing='#fb9a99',
+                             walkway='#e31a1c',
+                             stop_line='#fdbf6f',
+                             carpark_area='#ff7f00',
+                             road_divider='#cab2d6',
+                             lane_divider='#6a3d9a',
+                             traffic_light='#7e772e')
+
+        self.explorer = NuScenesMapExplorer(self, color_map=new_color_map)
 
         # Parse the map version and print a warning for deprecated maps.
         if 'version' in self.json_obj:
@@ -998,7 +1012,7 @@ class NuScenesMapExplorer:
 
         # Compute number of close ego poses.
         if verbose:
-            print('Creating pllllllllllllllllllllllot...')
+            print('Creating plot...')
         map_poses = np.vstack(map_poses)[:, :2]
 
         # Render the map patch with the current ego poses.
@@ -1017,11 +1031,8 @@ class NuScenesMapExplorer:
 
         # Plot in the same axis as the map.
         # Make sure these are plotted "on top".
-        if verbose:
-            print("right before plotting.....")
         if render_egoposes:
-            print("Im inside")
-            ax.scatter(map_poses[:, 0], map_poses[:, 1], s=20, c='g', alpha=1.0, zorder=2)
+            ax.scatter(map_poses[:, 0], map_poses[:, 1], s=20, c='k', alpha=1.0, zorder=2)
         plt.axis('off')
 
         if out_path is not None:

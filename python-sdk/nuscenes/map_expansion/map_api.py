@@ -81,8 +81,9 @@ class NuScenesMap:
         # self.non_geometric_layers = self.non_geometric_polygon_layers + self.non_geometric_line_layers
         self.non_geometric_layers = ['drivable_area', 'road_segment', 'road_block', 'lane', 'ped_crossing',
                                     'walkway', 'stop_line', 'carpark_area', 'road_divider', 'lane_divider']
+        # including carpark area too
         self.reduced_geometric_layers = ['road_segment', 'road_block', 'lane', 'ped_crossing',
-                                    'walkway', 'road_divider', 'lane_divider']
+                                    'walkway', 'road_divider', 'lane_divider', 'carpark_area']
         self.layer_names = self.geometric_layers + self.non_geometric_polygon_layers + self.non_geometric_line_layers
 
         with open(self.json_fname, 'r') as fh:
@@ -325,6 +326,34 @@ class NuScenesMap:
                                                           render_egoposes_range=render_egoposes_range,
                                                           render_legend=render_legend)
 
+    def render_pedposes_on_fancy_map(self,
+                                     nusc: NuScenes,
+                                     scene_tokens: List = None,
+                                     ped_path: List = [],
+                                     verbose: bool = True,
+                                     out_path: str = None,
+                                     render_egoposes: bool = True,
+                                     render_egoposes_range: bool = True,
+                                     render_legend: bool = True) -> np.ndarray:
+        """
+        Renders each ego pose of a list of scenes on the map (around 40 poses per scene).
+        This method is heavily inspired by NuScenes.render_egoposes_on_map(), but uses the map expansion pack maps.
+        :param nusc: The NuScenes instance to load the ego poses from.
+        :param scene_tokens: Optional list of scene tokens corresponding to the current map location.
+        :param ped_path: Pedestrian path to serve as a reference to create map patch
+        :param verbose: Whether to show status messages and progress bar.
+        :param out_path: Optional path to save the rendered figure to disk.
+        :param render_egoposes: Whether to render ego poses.
+        :param render_egoposes_range: Whether to render a rectangle around all ego poses.
+        :param render_legend: Whether to render the legend of map layers.
+        :return: <np.float32: n, 2>. Returns a matrix with n ego poses in global map coordinates.
+        """
+        return self.explorer.render_egoposes_on_fancy_map(nusc, scene_tokens=scene_tokens,
+                                                          verbose=verbose, out_path=out_path,
+                                                          render_egoposes=render_egoposes,
+                                                          render_egoposes_range=render_egoposes_range,
+                                                          render_legend=render_legend)
+    
     def render_map_mask(self,
                         patch_box: Tuple[float, float, float, float],
                         patch_angle: float,
@@ -1026,6 +1055,110 @@ class NuScenesMapExplorer:
             max_patch = center_patch + diff_patch / 2
         my_patch = (min_patch[0], min_patch[1], max_patch[0], max_patch[1])
         fig, ax = self.render_map_patch(my_patch, self.map_api.non_geometric_layers, figsize=(10, 10),
+                                        render_egoposes_range=render_egoposes_range,
+                                        render_legend=render_legend)
+
+        # Plot in the same axis as the map.
+        # Make sure these are plotted "on top".
+        if render_egoposes:
+            ax.scatter(map_poses[:, 0], map_poses[:, 1], s=20, c='k', alpha=1.0, zorder=2)
+        plt.axis('off')
+
+        if out_path is not None:
+            plt.savefig(out_path, bbox_inches='tight', pad_inches=0)
+
+        return map_poses
+
+    def render_pedposes_on_fancy_map(self,
+                                     nusc: NuScenes,
+                                     scene_tokens: List = None,
+                                     ped_path: List = [],
+                                     verbose: bool = True,
+                                     out_path: str = None,
+                                     render_egoposes: bool = True,
+                                     render_egoposes_range: bool = True,
+                                     render_legend: bool = True) -> np.ndarray:
+        """
+        Renders each ego pose of a list of scenes on the map (around 40 poses per scene).
+        This method is heavily inspired by NuScenes.render_egoposes_on_map(), but uses the map expansion pack maps.
+        Note that the maps are constantly evolving, whereas we only released a single snapshot of the data.
+        Therefore for some scenes there is a bad fit between ego poses and maps.
+        :param nusc: The NuScenes instance to load the ego poses from.
+        :param scene_tokens: Optional list of scene tokens corresponding to the current map location.
+        :param ped_path: Pedestrian path as a reference to create the map patch
+        :param verbose: Whether to show status messages and progress bar.
+        :param out_path: Optional path to save the rendered figure to disk.
+        :param render_egoposes: Whether to render ego poses.
+        :param render_egoposes_range: Whether to render a rectangle around all ego poses.
+        :param render_legend: Whether to render the legend of map layers.
+        :return: <np.float32: n, 2>. Returns a matrix with n ego poses in global map coordinates.
+        """
+        # Settings
+        patch_margin = 2
+        min_diff_patch = 30
+
+        # Ids of scenes with a bad match between localization and map.
+        scene_blacklist = [499, 515, 517]
+
+        # Get logs by location.
+        log_location = self.map_api.map_name
+        log_tokens = [l['token'] for l in nusc.log if l['location'] == log_location]
+        assert len(log_tokens) > 0, 'Error: This split has 0 scenes for location %s!' % log_location
+
+        # Filter scenes.
+        scene_tokens_location = [e['token'] for e in nusc.scene if e['log_token'] in log_tokens]
+        if scene_tokens is not None:
+            scene_tokens_location = [t for t in scene_tokens_location if t in scene_tokens]
+        assert len(scene_tokens_location) > 0, 'Error: Found 0 valid scenes for location %s!' % log_location
+
+        map_poses = []
+        if verbose:
+            print('Adding ego poses to map...')
+        for scene_token in tqdm(scene_tokens_location, disable=not verbose):
+            # Check that the scene is from the correct location.
+            scene_record = nusc.get('scene', scene_token)
+            scene_name = scene_record['name']
+            scene_id = int(scene_name.replace('scene-', ''))
+            log_record = nusc.get('log', scene_record['log_token'])
+            assert log_record['location'] == log_location, \
+                'Error: The provided scene_tokens do not correspond to the provided map location!'
+
+            # Print a warning if the localization is known to be bad.
+            if verbose and scene_id in scene_blacklist:
+                print('Warning: %s is known to have a bad fit between ego pose and map.' % scene_name)
+
+            # For each sample in the scene, store the ego pose.
+            sample_tokens = nusc.field2token('sample', 'scene_token', scene_token)
+            for sample_token in sample_tokens:
+                sample_record = nusc.get('sample', sample_token)
+
+                # Poses are associated with the sample_data. Here we use the lidar sample_data.
+                sample_data_record = nusc.get('sample_data', sample_record['data']['LIDAR_TOP'])
+                pose_record = nusc.get('ego_pose', sample_data_record['ego_pose_token'])
+
+                # Calculate the pose on the map and append.
+                map_poses.append(pose_record['translation'])
+
+        # Check that ego poses aren't empty.
+        assert len(map_poses) > 0, 'Error: Found 0 ego poses. Please check the inputs.'
+
+        # Compute number of close ego poses.
+        if verbose:
+            print('Creating plot...')
+        map_poses = np.vstack(map_poses)[:, :2]
+
+        # Render the map patch with the current ego poses.
+        print("Considering the ped_path")
+        min_patch = np.floor(ped_path.min(axis=0) - patch_margin)
+        max_patch = np.ceil(ped_path.max(axis=0) + patch_margin)
+        diff_patch = max_patch - min_patch
+        if any(diff_patch < min_diff_patch):
+            center_patch = (min_patch + max_patch) / 2
+            diff_patch = np.maximum(diff_patch, min_diff_patch)
+            min_patch = center_patch - diff_patch / 2
+            max_patch = center_patch + diff_patch / 2
+        my_patch = (min_patch[0], min_patch[1], max_patch[0], max_patch[1])
+        fig, ax = self.render_map_patch(my_patch, self.map_api.reduced_geometric_layers, figsize=(10, 10),
                                         render_egoposes_range=render_egoposes_range,
                                         render_legend=render_legend)
 

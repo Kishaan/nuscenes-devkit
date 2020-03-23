@@ -5,6 +5,7 @@
 *.pdf
 *.pyc
 *.png
+*.swp
 *.jpg
 *ipynb_*
 *._*

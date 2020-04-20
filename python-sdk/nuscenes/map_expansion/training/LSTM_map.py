@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
 import os
+import time
 
 # seeding for reproducible results
 from numpy.random import seed
@@ -254,16 +255,20 @@ checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath, monitor='val_euc_dist'
                                                 verbose=1, save_best_only=True, mode='min')
 callbacks_list = [checkpoint]
 
+train_start = time.time()
 train_history = lstm_model.fit(train_data, epochs=40,
                          verbose=1, callbacks=callbacks_list,
                          validation_data=val_data,
                          steps_per_epoch=300,
                          validation_steps=70
                          )
+train_end = time.time()
 
 
 # In[10]:
 
+with open('../checkpoints/history_files/LSTM_map.pkl', 'wb') as f:
+        pickle.dump(train_history.history, f)
 
 def plot_train_history(history, title):
     loss = history.history['loss']
@@ -348,9 +353,6 @@ for test_idx in range(TRAIN_SIZE, len(ped_dataset)):
     ade_values.append(loss)
     fde_values.append(final_loss)
     
-print(np.mean(np.array(ade_values)))
-print(np.mean(np.array(fde_values)))
-
-
-# In[ ]:
-
+print(np.mean(np.array(ade_values)), flush=True)
+print(np.mean(np.array(fde_values)), flush=True)
+print(f"Training time: {train_end-train_start}")

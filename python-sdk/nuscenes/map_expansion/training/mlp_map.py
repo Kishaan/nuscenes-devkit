@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
 import os
+import time
 
 # seeding for reproducible results
 from numpy.random import seed
@@ -259,16 +260,20 @@ checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath, monitor='val_euc_dist'
                                                 mode='min')
 callbacks_list = [checkpoint]
 
+train_start = time.time()
 train_history = fc_model.fit(train_data, epochs=40,
                              verbose=1, callbacks=callbacks_list,
                              validation_data=val_data,
                              steps_per_epoch=400,
                              validation_steps=70
                              )
+train_end = time.time()
 
 
 # In[11]:
 
+with open('../checkpoints/history_files/mlp_map.pkl', 'wb') as f:
+        pickle.dump(train_history.history, f)
 
 def plot_train_history(history, title):
     loss = history.history['loss']
@@ -286,7 +291,7 @@ def plot_train_history(history, title):
 # In[12]:
 
 
-plot_train_history(train_history, "MLP train and validation loss")
+# plot_train_history(train_history, "MLP train and validation loss")
 
 
 # In[13]:
@@ -351,4 +356,4 @@ for test_idx in range(TRAIN_SIZE, len(ped_dataset)):
     
 print(np.mean(np.array(ade_values)))
 print(np.mean(np.array(fde_values)))
-
+print(f"Training time: {train_end-train_start}")

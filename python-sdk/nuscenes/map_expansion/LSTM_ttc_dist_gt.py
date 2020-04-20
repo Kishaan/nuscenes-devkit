@@ -122,6 +122,7 @@ val_data = val_data.batch(BATCH_SIZE).repeat()
 
 # defining the custom rmse loss function
 def ttc_loss(gt_path, ego_path):
+    print(ego_path)
     tot_ttc = 0.0
     tot_dist = 0.0
     for i in range(gt_path.shape[0]): #batch
@@ -141,7 +142,7 @@ def ttc_loss(gt_path, ego_path):
         tot_dist += del_dist
     tot_ttc = tot_ttc/float(len(gt_path))
     tot_dist = tot_dist/float(len(gt_path))
-    return np.float32(tot_dist*tot_ttc)  
+    return np.float32(tot_ttc)  
 
 def model_loss(gt, pred_path):
     '''
@@ -152,7 +153,8 @@ def model_loss(gt, pred_path):
     
     ego_path = gt[:,10:,:]
     ttc_error = tf.numpy_function(ttc_loss, [gt_path, ego_path], tf.float32)
-    return rmse_error + (2.0/(ttc_error+0.1))
+    # return 1./ttc_error
+    return rmse_error + (2./(ttc_error+0.1))
 
 def euc_dist(gt_path, pred_path):
     # custom metric to monitor rmse
@@ -191,7 +193,7 @@ checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath, monitor='val_euc_dist'
 callbacks_list = [checkpoint]
 
 train_history = lstm_model.fit(train_data, epochs=40,
-                         verbose=0, callbacks=None,
+                         verbose=1, callbacks=None,
                          validation_data=val_data,
                          steps_per_epoch=300,
                          validation_steps=70
@@ -220,7 +222,7 @@ def plot_train_history(history, title):
 # In[12]:
 
 
-# plot_train_history(train_history, "MLP train and validation loss")
+plot_train_history(train_history, "MLP train and validation loss")
 
 
 # In[13]:

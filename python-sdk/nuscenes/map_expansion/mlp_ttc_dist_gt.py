@@ -116,6 +116,7 @@ val_data = val_data.batch(BATCH_SIZE).repeat()
 
 # defining the custom rmse loss function
 def ttc_loss(gt_path, ego_path):
+    print(ego_path)
     tot_ttc = 0.0
     tot_dist = 0.0
     for i in range(gt_path.shape[0]):
@@ -152,7 +153,8 @@ def model_loss(gt, pred):
     ego_path = tf.reshape(ego_path, [-1,10,2])
     
     ttc_error = tf.numpy_function(ttc_loss, [gt_path, ego_path], tf.float32)
-    return rmse_error + (2.0/(ttc_error+0.1))
+    # return 200./(ttc_error+0.1)
+    return rmse_error + (200./(ttc_error+0.1))
 
 def euc_dist(gt, pred):
     # custom metric to monitor rmse

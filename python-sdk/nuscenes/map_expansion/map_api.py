@@ -348,7 +348,8 @@ class NuScenesMap:
         :param render_legend: Whether to render the legend of map layers.
         :return: <np.float32: n, 2>. Returns a matrix with n ego poses in global map coordinates.
         """
-        return self.explorer.render_egoposes_on_fancy_map(nusc, scene_tokens=scene_tokens,
+        return self.explorer.render_pedposes_on_fancy_map(nusc, scene_tokens=scene_tokens,
+                                                          ped_path=ped_path,
                                                           verbose=verbose, out_path=out_path,
                                                           render_egoposes=render_egoposes,
                                                           render_egoposes_range=render_egoposes_range,
@@ -1094,7 +1095,8 @@ class NuScenesMapExplorer:
         :return: <np.float32: n, 2>. Returns a matrix with n ego poses in global map coordinates.
         """
         # Settings
-        patch_margin = 2
+        # changed from 2 to 1.5
+        patch_margin = 1.4
         min_diff_patch = 30
 
         # Ids of scenes with a bad match between localization and map.
@@ -1148,7 +1150,8 @@ class NuScenesMapExplorer:
         map_poses = np.vstack(map_poses)[:, :2]
 
         # Render the map patch with the current ego poses.
-        print("Considering the ped_path")
+        if verbose:
+            print("Considering the ped_path")
         min_patch = np.floor(ped_path.min(axis=0) - patch_margin)
         max_patch = np.ceil(ped_path.max(axis=0) + patch_margin)
         diff_patch = max_patch - min_patch
@@ -1165,7 +1168,13 @@ class NuScenesMapExplorer:
         # Plot in the same axis as the map.
         # Make sure these are plotted "on top".
         if render_egoposes:
-            ax.scatter(map_poses[:, 0], map_poses[:, 1], s=20, c='k', alpha=1.0, zorder=2)
+
+            alphas = np.linspace(1, 0.1, len(map_poses))
+            black_colors = np.zeros((len(map_poses),4))
+
+            # the fourth column needs to be your alphas
+            black_colors[:, 3] = alphas
+            ax.scatter(map_poses[:, 0], map_poses[:, 1], s=20, color=black_colors, zorder=2)
         plt.axis('off')
 
         if out_path is not None:
